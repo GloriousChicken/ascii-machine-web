@@ -12,24 +12,57 @@ same numbers.
 
 Usage:
     python3 tools/reference_stats.py [steps] [width] [height]
+
+The terminal app is not part of this repository, so its location has to be
+given. It is taken from the --terminal argument, or from the
+ASCII_MACHINE_TERMINAL environment variable, or from a sibling checkout of
+the terminal app named ascii-machine.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-# The terminal app lives next door. Its simulation is pure numpy, so it can
-# be imported without pulling in any terminal machinery.
-TERMINAL_APP = Path("SOME_PATH")
-sys.path.insert(0, str(TERMINAL_APP / "src"))
-
-from ascii_machine import palette as pal  # noqa: E402
-from ascii_machine.simulation import Simulation  # noqa: E402
+# The terminal app lives somewhere else: its simulation is pure numpy, so it
+# can be imported without pulling in any terminal machinery.
+TERMINAL_ENV = "ASCII_MACHINE_TERMINAL"
 
 
-def histogram(density):
+def terminal_app_path(explicit: str | None) -> Path:
+    """Where the terminal app's source lives."""
+    if explicit:
+        return Path(explicit).expanduser()
+
+    from_env = os.environ.get(TERMINAL_ENV)
+    if from_env:
+        return Path(from_env).expanduser()
+
+    # A checkout of the terminal app next to this one.
+    sibling = Path(__file__).resolve().parent.parent.parent / "ascii-machine"
+    if sibling.is_dir():
+        return sibling
+
+    raise SystemExit(
+        f"could not find the terminal app. Set {TERMINAL_ENV} to its path, "
+        f"or pass --terminal PATH."
+    )
+
+
+def import_terminal_app(explicit: str | None):
+    """Import the terminal app's palette and simulation."""
+    sys.path.insert(0, str(terminal_app_path(explicit) / "src"))
+
+    from ascii_machine import palette as pal
+    from ascii_machine.simulation import Simulation
+
+    return pal, Simulation
+
+
+def histogram(pal, density):
     """The share of cells at each of the ten ramp levels."""
     low, high = pal.np.percentile(density, 2), pal.np.percentile(density, 98)
     span = max(float(high - low), 1e-6)
@@ -39,7 +72,7 @@ def histogram(density):
     return [round(float(value), 4) for value in counts]
 
 
-def aliveness(seed, steps, width, height):
+def aliveness(pal, Simulation, seed, steps, width, height):
     """How much the sea changes from one frame to the next."""
     simulation = Simulation(height, width, seed=seed)
     for _ in range(steps):
@@ -56,7 +89,7 @@ def aliveness(seed, steps, width, height):
     return {"early": round(early, 6), "late": round(late, 6)}
 
 
-def click_response(seed, steps, width, height):
+def click_response(pal, Simulation, seed, steps, width, height):
     """Where the energy lands when a cell is clicked."""
     simulation = Simulation(height, width, seed=seed)
     for _ in range(steps):
@@ -74,9 +107,21 @@ def click_response(seed, steps, width, height):
 
 
 def main() -> None:
-    steps = int(sys.argv[1]) if len(sys.argv) > 1 else 200
-    width = int(sys.argv[2]) if len(sys.argv) > 2 else 80
-    height = int(sys.argv[3]) if len(sys.argv) > 3 else 24
+    parser = argparse.ArgumentParser(
+        description="Measure the terminal app's invariants, for the web version to match."
+    )
+    parser.add_argument("steps", nargs="?", type=int, default=200)
+    parser.add_argument("width", nargs="?", type=int, default=80)
+    parser.add_argument("height", nargs="?", type=int, default=24)
+    parser.add_argument(
+        "--terminal",
+        default=None,
+        help="path to the terminal app's checkout",
+    )
+    args = parser.parse_args()
+
+    steps, width, height = args.steps, args.width, args.height
+    pal, Simulation = import_terminal_app(args.terminal)
 
     histograms = []
     aliveness_early = []
@@ -88,13 +133,13 @@ def main() -> None:
         simulation = Simulation(height, width, seed=seed)
         for _ in range(steps):
             simulation.step()
-        histograms.append(histogram(simulation.density))
+        histograms.append(histogram(pal, simulation.density))
 
-        alive = aliveness(seed, steps, width, height)
+        alive = aliveness(pal, Simulation, seed, steps, width, height)
         aliveness_early.append(alive["early"])
         aliveness_late.append(alive["late"])
 
-        click = click_response(seed, steps, width, height)
+        click = click_response(pal, Simulation, seed, steps, width, height)
         click_offsets.append(click["peakOffset"])
         click_lit.append(click["litCells"])
 

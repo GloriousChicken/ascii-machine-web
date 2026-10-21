@@ -10,8 +10,10 @@ reacts to you.
 
 ![the sea, with a drag stirring it](docs/sea.png)
 
-This is the browser version of [ascii-machine](https://github.com/GloriousChicken/ascii-machine),
-the terminal app. Same algorithm, same look, same interaction.
+This is the browser version of `ascii-machine`, the terminal app. Same
+algorithm, same look, same interaction. The terminal app's source is not
+public, so the link to it is left out here; the parity tests below were
+measured against it.
 
 ## The mouse
 
@@ -101,6 +103,14 @@ with `tools/reference_stats.py`:
 - a drag lights the whole path and nothing off it
 - the same seed gives the same sea, at any window size
 
+`tools/reference_stats.py` measures those invariants against the terminal app.
+It needs a checkout of the terminal app, which is not public; point it at one
+with `--terminal`, or with the `ASCII_MACHINE_TERMINAL` environment variable:
+
+```sh
+python3 tools/reference_stats.py --terminal ../ascii-machine
+```
+
 ## Deploying
 
 Pushes to `main` are built and deployed to GitHub Pages by
@@ -108,5 +118,5 @@ Pushes to `main` are built and deployed to GitHub Pages by
 
 ## Licence
 
-The code is MIT licensed. The bundled font is JetBrains Mono, under the SIL
-Open Font License.
+The code is MIT licensed (see [LICENSE](LICENSE)). The bundled font is JetBrains
+Mono, under the SIL Open Font License.
