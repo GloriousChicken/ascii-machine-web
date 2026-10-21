@@ -119,4 +119,5 @@ Pushes to `main` are built and deployed to GitHub Pages by
 ## Licence
 
 The code is MIT licensed (see [LICENSE](LICENSE)). The bundled font is JetBrains
-Mono, under the SIL Open Font License.
+Mono, under the SIL Open Font License, whose text ships with the site as
+[OFL.txt](public/OFL.txt).
